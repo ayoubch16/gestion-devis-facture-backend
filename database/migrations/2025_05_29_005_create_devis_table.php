@@ -15,13 +15,13 @@ class CreateDevisTable extends Migration
     {
 Schema::create('devis', function (Blueprint $table) {
     $table->id();
-    $table->string('num_devis');
+    $table->string('numDevis');
     $table->foreignId('client_id')->constrained();
     $table->decimal('montant', 10, 2);
     $table->enum('statut', ['EN_ATTENTE', 'ACCEPTE', 'REFUSE']);
     $table->date('date');
-    $table->boolean('facture_existante')->default(false);
-    $table->boolean('bl_existante')->default(false);
+    $table->boolean('factureExistante')->default(false);
+    $table->boolean('blExistante')->default(false);
     $table->timestamps();
 });
     }

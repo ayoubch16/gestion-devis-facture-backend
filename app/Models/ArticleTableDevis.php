@@ -9,7 +9,7 @@ class ArticleTableDevis extends Model
 {
     protected $fillable = [
         'designation', 'description', 'quantite',
-        'prix_unitaire', 'prix_total', 'devis_id'
+        'prixUnitaire', 'prixTotal', 'devis_id'
     ];
     
     public function devis()

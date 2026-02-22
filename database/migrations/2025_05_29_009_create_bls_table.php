@@ -15,7 +15,7 @@ class CreateBlsTable extends Migration
     {
 Schema::create('bls', function (Blueprint $table) {
     $table->id();
-    $table->string('num_bl');
+    $table->string('numBl');
     $table->foreignId('client_id')->constrained();
     $table->enum('statut', ['LIVRE', 'NON_LIVRE']);
     $table->date('date');

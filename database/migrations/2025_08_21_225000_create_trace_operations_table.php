@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateVillesTable extends Migration
+class CreateTraceOperationsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,11 +13,8 @@ class CreateVillesTable extends Migration
      */
     public function up()
     {
-        Schema::create('villes', function (Blueprint $table) {
+        Schema::create('trace_operations', function (Blueprint $table) {
             $table->id();
-            $table->string('nom');
-            $table->string('code_postal');
-            $table->string('region');
             $table->timestamps();
         });
     }
@@ -29,6 +26,6 @@ class CreateVillesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('villes');
+        Schema::dropIfExists('trace_operations');
     }
 }

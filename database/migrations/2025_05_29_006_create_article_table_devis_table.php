@@ -18,8 +18,8 @@ Schema::create('article_table_devis', function (Blueprint $table) {
     $table->string('designation');
     $table->text('description');
     $table->integer('quantite');
-    $table->decimal('prix_unitaire', 10, 2);
-    $table->decimal('prix_total', 10, 2);
+    $table->decimal('prixUnitaire', 10, 2);
+    $table->decimal('prixTotal', 10, 2);
     $table->foreignId('devis_id')->constrained();
     $table->timestamps();
 });

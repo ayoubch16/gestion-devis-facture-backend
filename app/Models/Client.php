@@ -7,14 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Client extends Model
 {
     protected $fillable = [
-        'raison_sociale', 'adresse', 'ville_id', 
+        'raisonSociale', 'adresse', 'ville_id', 
         'ice', 'telephone', 'email'
     ];
-    
-    public function ville()
-    {
-        return $this->belongsTo(Ville::class);
-    }
     
     public function devis()
     {

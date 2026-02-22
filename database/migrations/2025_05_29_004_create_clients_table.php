@@ -16,9 +16,9 @@ class CreateClientsTable extends Migration
 // database/migrations/xxxx_xx_xx_xxxxxx_create_clients_table.php
 Schema::create('clients', function (Blueprint $table) {
     $table->id();
-    $table->string('raison_sociale');
+    $table->string('raisonSociale');
     $table->string('adresse');
-    $table->foreignId('ville_id')->constrained();
+    $table->foreignId('ville_id');
     $table->string('ice');
     $table->string('telephone');
     $table->string('email');

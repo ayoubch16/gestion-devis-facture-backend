@@ -13,13 +13,13 @@ class CreateArticleTableBlsTable extends Migration
      */
     public function up()
     {
-Schema::create('article_table_bl', function (Blueprint $table) {
+Schema::create('article_table_bls', function (Blueprint $table) {
     $table->id();
     $table->string('designation');
     $table->text('description');
     $table->integer('quantite');
-    $table->decimal('prix_unitaire', 10, 2);
-    $table->decimal('prix_total', 10, 2);
+    $table->decimal('prixUnitaire', 10, 2);
+    $table->decimal('prixTotal', 10, 2);
     $table->foreignId('bl_id')->constrained();
     $table->timestamps();
 });

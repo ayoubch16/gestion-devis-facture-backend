@@ -9,7 +9,7 @@ class ArticleTableFacture extends Model
 {
     protected $fillable = [
         'designation', 'description', 'quantite',
-        'prix_unitaire', 'prix_total', 'facture_id'
+        'prixUnitaire', 'prixTotal', 'facture_id'
     ];
     
     public function facture()

@@ -13,13 +13,13 @@ class CreateArticleTableFacturesTable extends Migration
      */
     public function up()
     {
-Schema::create('article_table_facture', function (Blueprint $table) {
+Schema::create('article_table_factures', function (Blueprint $table) {
     $table->id();
     $table->string('designation');
     $table->text('description');
     $table->integer('quantite');
-    $table->decimal('prix_unitaire', 10, 2);
-    $table->decimal('prix_total', 10, 2);
+    $table->decimal('prixUnitaire', 10, 2);
+    $table->decimal('prixTotal', 10, 2);
     $table->foreignId('facture_id')->constrained();
     $table->timestamps();
 });

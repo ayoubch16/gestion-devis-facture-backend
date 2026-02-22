@@ -16,10 +16,10 @@ class CreateArticlesTable extends Migration
 Schema::create('articles', function (Blueprint $table) {
     $table->id();
     $table->string('unite');
-    $table->foreignId('category_article_id')->constrained();
-    $table->string('name_article');
-    $table->text('description_article');
-    $table->decimal('price_article', 10, 2);
+    $table->foreignId('categoryId');
+    $table->string('nameArticle');
+    $table->text('descriptionArticle');
+    $table->decimal('priceArticle', 10, 2);
     $table->timestamps();
 });
     }

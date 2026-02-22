@@ -15,7 +15,7 @@ class CreateFacturesTable extends Migration
     {
 Schema::create('factures', function (Blueprint $table) {
     $table->id();
-    $table->string('num_facture');
+    $table->string('numFacture');
     $table->foreignId('client_id')->constrained();
     $table->decimal('montant', 10, 2);
     $table->enum('statut', ['NON_PAYEE', 'PARTIELLEMENT_PAYEE', 'PAYEE']);

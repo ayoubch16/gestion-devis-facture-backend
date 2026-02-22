@@ -3,24 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\Article;
-use App\Models\CategoryArticle;
 use Illuminate\Http\Request;
 
 class ArticleController extends Controller
 {
     public function index()
     {
-        return Article::with('category')->get();
+         return response()->json(Article::orderBy('id', 'desc')->get());
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'unite' => 'required|string',
-            'category_article_id' => 'required|exists:category_articles,id',
-            'name_article' => 'required|string',
-            'description_article' => 'required|string',
-            'price_article' => 'required|numeric',
+            'unite' => 'nullable|string',
+            'categoryId' => 'required|numeric',
+            'nameArticle' => 'required|string',
+            'descriptionArticle' => 'nullable|string',  // Changé à nullable
+            'priceArticle' => 'required|numeric',
         ]);
 
         return Article::create($validated);
@@ -28,31 +27,40 @@ class ArticleController extends Controller
 
     public function show(Article $article)
     {
-        return $article->load('category');
+        return $article->load('categoryId');
     }
 
-    public function update(Request $request, Article $article)
+    public function update(Request $request, $id)
     {
+        $article = Article::find($id);
+        
+        if (!$article) {
+            return response()->json(['error' => 'Article non trouvé'], 404);
+        }
+
         $validated = $request->validate([
-            'unite' => 'string',
-            'category_article_id' => 'exists:category_articles,id',
-            'name_article' => 'string',
-            'description_article' => 'string',
-            'price_article' => 'numeric',
+            'unite' => 'nullable|string',
+            'categoryId' => 'sometimes|required|numeric',  // Ajouté 'required' avec 'sometimes'
+            'nameArticle' => 'sometimes|required|string',  // Ajouté 'required' avec 'sometimes'
+            'descriptionArticle' => 'nullable|string',
+            'priceArticle' => 'sometimes|required|numeric',  // Ajouté 'required' avec 'sometimes'
         ]);
 
         $article->update($validated);
+        
         return $article;
     }
 
-    public function destroy(Article $article)
+    public function destroy($id)
     {
-        $article->delete();
-        return response()->noContent();
-    }
+        $article = Article::find($id);
+        
+        if (!$article) {
+            return response()->json(['error' => 'Article non trouvé'], 404);
+        }
 
-    public function categories()
-    {
-        return CategoryArticle::all();
+        $article->delete();
+        
+        return response()->noContent();
     }
 }

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Bl extends Model
 {
     protected $fillable = [
-        'num_bl', 'client_id', 'statut', 'date', 'devis_id'
+        'numBl', 'client_id', 'statut', 'date', 'devis_id','numBC'
     ];
     
     public function client()

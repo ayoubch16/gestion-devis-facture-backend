@@ -8,8 +8,5 @@ class Ville extends Model
 {
     protected $fillable = ['nom', 'code_postal', 'region'];
     
-    public function clients()
-    {
-        return $this->hasMany(Client::class);
-    }
+
 }

@@ -14,22 +14,25 @@ class DocumentNumberServiceProvider extends ServiceProvider
     {
         $this->app->singleton('documentNumber', function () {
             return new class {
-                public function generateDevisNumber()
+                 public function generateDevisNumber()
                 {
-                    $count = Devis::count() + 1;
-                    return 'DEV-' . date('Y') . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
+                    $last = Devis::latest('id')->first();
+                    $nextId = $last ? $last->id + 1 : 1;
+                    return 'DEV-' . date('y') . '-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
                 }
 
                 public function generateFactureNumber()
                 {
-                    $count = Facture::count() + 1;
-                    return 'FAC-' . date('Y') . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
+                    $last = Facture::latest('id')->first();
+                    $nextId = $last ? $last->id + 1 : 1;
+                    return 'FAC-' . date('y') . '-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
                 }
 
                 public function generateBlNumber()
                 {
-                    $count = Bl::count() + 1;
-                    return 'BL-' . date('Y') . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
+                    $last = Bl::latest('id')->first();
+                    $nextId = $last ? $last->id + 1 : 1;
+                    return 'BL-' . date('y') . '-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
                 }
             };
         });

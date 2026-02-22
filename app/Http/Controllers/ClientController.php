@@ -14,16 +14,15 @@ class ClientController extends Controller
 
     public function index()
     {
-        return response()->json(Client::all());
-        // return Client::with('ville')->get();
+        return response()->json(Client::orderBy('id', 'desc')->get());
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'raison_sociale' => 'required|string',
+            'raisonSociale' => 'required|string',
             'adresse' => 'required|string',
-            'ville_id' => 'required|exists:villes,id',
+            'ville_id' => 'required|numeric',
             'ice' => 'required|string',
             'telephone' => 'required|string',
             'email' => 'required|email',
@@ -36,34 +35,40 @@ class ClientController extends Controller
         return $client->load('ville');
     }
 
-    public function update(Request $request, Client $client)
+    public function update(Request $request, $id) // Changez le paramètre
     {
-                Log::info('Données reçues:', $request->all());
-
+        $client = Client::findOrFail($id); // Récupérez explicitement le client
+        
         $validated = $request->validate([
-            'raison_sociale' => 'string',
+            'raisonSociale' => 'string',
             'adresse' => 'string',
-            'ville_id' => 'exists:villes,id',
+            'ville_id' => 'numeric',
             'ice' => 'string',
             'telephone' => 'string',
             'email' => 'email',
         ]);
-Log::info('Données validées:', $validated);
 
         $client->update($validated);
-        Log::info('Client après update:', $client->toArray());
-
         return $client;
     }
 
-    public function destroy(Client $client)
+    public function destroy($id)
     {
+        $client = Client::findOrFail($id);
+
+        // Vérifier si le client a des relations liées
+        if ($client->bls()->count() > 0 || 
+            $client->devis()->count() > 0 || 
+            $client->factures()->count() > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de supprimer ce client car il possède des bons de livraison, devis ou factures associés.'
+            ], 422);
+        }
+
         $client->delete();
-        return response()->noContent();
+
+        return response()->json(['message' => 'Client supprimé avec succès'], 200);
     }
 
-    public function villes()
-    {
-        return Ville::all();
-    }
 }

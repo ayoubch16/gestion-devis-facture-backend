@@ -8,7 +8,7 @@ class ArticleTableBl extends Model
 {
     protected $fillable = [
         'designation', 'description', 'quantite',
-        'prix_unitaire', 'prix_total', 'bl_id'
+        'prixUnitaire', 'prixTotal', 'bl_id'
     ];
     
     public function bl()

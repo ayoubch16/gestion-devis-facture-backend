@@ -10,24 +10,42 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+ // app/Http/Controllers/AuthController.php
+
     public function login(Request $request)
     {
         $request->validate([
-            'username' => 'required',
-            'password' => 'required',
+            'username' => 'required|string',
+            'password' => 'required|string',
         ]);
 
         $user = User::where('username', $request->username)->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'username' => ['Les informations d\'identification fournies sont incorrectes.'],
-            ]);
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'Identifiants incorrects'
+            ], 401);
         }
 
+        // Vérifiez que l'utilisateur est actif
+        if (!$user->is_active) {
+            return response()->json([
+                'message' => 'Votre compte est désactivé'
+            ], 403);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
-            'token' => $user->createToken('auth_token')->plainTextToken,
-            'user' => $user,
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'username' => $user->username,
+                'email' => $user->email,
+                'role' => $user->role,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name
+            ]
         ]);
     }
 

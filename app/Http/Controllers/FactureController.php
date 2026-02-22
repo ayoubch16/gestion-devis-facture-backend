@@ -7,25 +7,48 @@ use App\Models\Facture;
 use App\Models\ArticleTableFacture;
 use App\Models\Devis;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FactureController extends Controller
 {
     public function index()
     {
-        return Facture::with(['client', 'articles', 'devis'])->get();
+          return Facture::with(['client', 'articles', 'devis'])
+                        ->orderBy('id', 'desc')
+                        ->get();
+    }
+    
+    public function latest()
+    {
+        return Facture::with(['client', 'articles'])
+                      ->orderBy('id', 'desc')
+                      ->limit(5)
+                      ->get();
     }
 
     public function createFromDevis($devisId)
     {
-        $devis = Devis::with(['client', 'articles'])->findOrFail($devisId);
+        // 1. Vérifier que le devis existe
+        $devis = Devis::with(['client', 'articles'])->find($devisId);
+        
+        if (!$devis) {
+            return response()->json(['message' => 'Devis non trouvé'], 404);
+        }
+
+        // 2. Vérifier qu'une facture n'existe pas déjà
+        if ($devis->factureExistante) {
+            return response()->json(['message' => 'Une facture existe déjà pour ce devis'], 400);
+        }
         
         $facture = Facture::create([
-            'num_facture' => app('documentNumber')->generateFactureNumber(), // Utilisation du service
+            'numFacture' => str_replace('DEV', 'FACT', $devis->numDevis), 
             'client_id' => $devis->client_id,
             'montant' => $devis->montant,
             'statut' => 'NON_PAYEE',
             'date' => now()->format('Y-m-d'),
             'devis_id' => $devis->id,
+            'numBC' => null  
         ]);
         
         foreach ($devis->articles as $article) {
@@ -33,40 +56,194 @@ class FactureController extends Controller
                 'designation' => $article->designation,
                 'description' => $article->description,
                 'quantite' => $article->quantite,
-                'prix_unitaire' => $article->prix_unitaire,
-                'prix_total' => $article->prix_total,
+                'prixUnitaire' => $article->prixUnitaire,
+                'prixTotal' => $article->prixTotal,
                 'facture_id' => $facture->id,
             ]);
         }
         
-        $devis->update(['facture_existante' => true]);
+        $devis->update(['factureExistante' => true]);
         
         return $facture->load(['client', 'articles', 'devis']);
     }
-
-    public function update(Request $request, Facture $facture)
+    
+    
+    public function update(Request $request, $id)
     {
-        $validated = $request->validate([
-            'num_facture' => 'string|unique:factures,num_facture,'.$facture->id,
-            'client_id' => 'exists:clients,id',
-            'montant' => 'numeric',
-            'statut' => 'in:NON_PAYEE,PARTIELLEMENT_PAYEE,PAYEE',
-            'date' => 'date',
+        $factures = Facture::find($id);
+        
+        if (!$factures) {
+            return response()->json(['message' => 'Facture non trouvé'], 404);
+        }
+
+        DB::beginTransaction();
+        
+        try {
+            // Préparation des données pour la validation
+            $requestData = $request->all();
+            
+            // Gérer le cas où montant est "NaN" ou invalide
+            if (isset($requestData['montant']) && ($requestData['montant'] === 'NaN' || !is_numeric($requestData['montant']))) {
+                // Calculer le montant total à partir des articles si disponibles
+                if (isset($requestData['articles']) && is_array($requestData['articles'])) {
+                    $montantTotal = 0;
+                    foreach ($requestData['articles'] as $article) {
+                        $montantTotal += floatval($article['prixTotal'] ?? 0);
+                    }
+                    $requestData['montant'] = $montantTotal;
+                } else {
+                    unset($requestData['montant']); // Ne pas mettre à jour le montant si invalide
+                }
+            }
+
+            $validated = validator($requestData, [
+                'numFacture' => 'sometimes|string|unique:factures,numFacture,'.$id,
+                'client_id' => 'sometimes|exists:clients,id',
+                'montant' => 'sometimes|numeric',
+                'statut' => 'sometimes|in:NON_PAYEE,PAYEE,PARTIELLEMENT_PAYEE',
+                'date' => 'sometimes|date',
+                'numBC' => 'sometimes|nullable|string',
+                'articles' => 'sometimes|array',
+                'articles.*.designation' => 'required_with:articles|string',
+                'articles.*.description' => 'required_with:articles|string',
+                'articles.*.quantite' => 'required_with:articles|integer|min:1',
+                'articles.*.prixUnitaire' => 'required_with:articles|numeric|min:0',
+                'articles.*.prixTotal' => 'required_with:articles|numeric|min:0',
+            ])->validate();
+
+            // Mise à jour du devis (sans les articles)
+            $factureData = collect($validated)->except('articles')->toArray();
+            $factures->update($factureData);
+
+            // Mise à jour des articles si fournis
+            if (isset($validated['articles'])) {
+                // Supprimer tous les anciens articles
+                ArticleTableFacture::where('facture_id', $id)->delete();
+
+                // Créer les nouveaux articles
+                foreach ($validated['articles'] as $articleData) {
+                    $articleData['facture_id'] = $factures->id;
+                    
+                    // S'assurer que les valeurs numériques sont correctement formatées
+                    $articleData['quantite'] = intval($articleData['quantite']);
+                    $articleData['prixUnitaire'] = floatval($articleData['prixUnitaire']);
+                    $articleData['prixTotal'] = floatval($articleData['prixTotal']);
+                    
+                    ArticleTableFacture::create($articleData);
+                }
+            }
+
+            DB::commit();
+            
+            return $factures->load(['client', 'articles']);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Erreur mise à jour facture: " . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    // public function update(Request $request, Facture $facture)
+    // {
+    //     // if ($facture->statut === 'PAYEE' && $request->has('montant')) {
+    //     //     return response()->json(['message' => 'Une facture payée ne peut être modifiée'], 403);
+    //     // }
+
+    //     $validated = $request->validate([
+    //         'numFacture' => 'string|unique:factures,numFacture,'.$facture->id,
+    //         'client_id' => 'exists:clients,id',
+    //         'montant' => 'numeric',
+    //         'statut' => 'in:NON_PAYEE,PARTIELLEMENT_PAYEE,PAYEE',
+    //         'date' => 'date',
+    //     ]);
+
+    //     $facture->update($validated);
+    //     return $facture;
+    // }
+
+public function destroy($id)
+{
+    DB::beginTransaction();
+    try {
+        // 1. Vérifier l'existence de la facture
+        $facture = Facture::with(['articles'])->find($id);
+        
+        if (!$facture) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Facture non trouvée'
+            ], 404);
+        }
+
+        // 2. Vérifier le statut
+        if ($facture->statut === 'PAYEE') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de supprimer une facture payée'
+            ], 422);
+        }
+
+        // 3. Suppression en cascade
+        ArticleTableFacture::where('facture_id', $id)->delete();
+        
+        // 4. Mettre à jour le devis associé si existe
+        if ($facture->devis_id) {
+            Devis::where('id', $facture->devis_id)
+                ->update(['factureExistante' => false]);
+        }
+        
+        $facture->delete();
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Facture et articles associés supprimés avec succès'
         ]);
 
-        $facture->update($validated);
-        return $facture;
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error("Erreur suppression facture: " . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur lors de la suppression',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
-    public function destroy(Facture $facture)
+    // public function updateStatut(Request $request, Facture $facture, $statut)
+    // {
+    //     $facture->update(['statut' => $statut]);
+    //     return $facture;
+    // }  NON_PAYEE = 'NON_PAYEE',
+//   PARTIELLEMENT_PAYEE = 'PARTIELLEMENT_PAYEE',
+//   PAYEE = 'PAYEE',
+    
+    public function updateStatut(Request $request, $id, $statut)
     {
-        $facture->delete();
-        return response()->noContent();
-    }
+        $facture = Facture::find($id);
+        
+        if (!$facture) {
+            return response()->json(['message' => 'Facture non trouvé'], 404);
+        }
 
-    public function updateStatut(Request $request, Facture $facture, $statut)
-    {
+        if (!in_array($statut, ['NON_PAYEE', 'PAYEE', 'PARTIELLEMENT_PAYEE'])) {
+            return response()->json(['message' => 'Statut invalide'], 400);
+        }
+
         $facture->update(['statut' => $statut]);
+        
         return $facture;
     }
+
+    
 }
