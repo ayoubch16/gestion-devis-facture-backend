@@ -32,10 +32,11 @@ class DevisController extends Controller
             'client_id' => 'required|exists:clients,id',
             'montant' => 'required|numeric',
             'statut' => 'required|in:EN_ATTENTE,ACCEPTE,REFUSE',
+            'remiseDevis' => 'nullable|numeric|min:0|max:100',
             'date' => 'required|date',
             'articles' => 'required|array',
             'articles.*.designation' => 'required|string',
-            'articles.*.description' => 'required|string',
+            'articles.*.description' => 'nullable|string',
             'articles.*.quantite' => 'required|integer|min:1',
             'articles.*.prixUnitaire' => 'required|numeric|min:0',
             'articles.*.prixTotal' => 'required|numeric|min:0',
@@ -48,6 +49,7 @@ class DevisController extends Controller
 
         foreach ($request->articles as $article) {
             $article['devis_id'] = $devis->id;
+            $article['description'] = $article['description'] ?? '';
             ArticleTableDevis::create($article);
         }
 
@@ -93,6 +95,7 @@ class DevisController extends Controller
                 'numDevis' => 'sometimes|string|unique:devis,numDevis,'.$id,
                 'client_id' => 'sometimes|exists:clients,id',
                 'montant' => 'sometimes|numeric',
+                'remiseDevis' => 'nullable|numeric|min:0|max:100',
                 'statut' => 'sometimes|in:EN_ATTENTE,ACCEPTE,REFUSE',
                 'date' => 'sometimes|date',
                 'articles' => 'sometimes|array',
@@ -120,7 +123,8 @@ class DevisController extends Controller
                     $articleData['quantite'] = intval($articleData['quantite']);
                     $articleData['prixUnitaire'] = floatval($articleData['prixUnitaire']);
                     $articleData['prixTotal'] = floatval($articleData['prixTotal']);
-                    
+                    $articleData['remise']    = floatval($articleData['remise'] ?? 0);
+                    $articleData['description'] = $articleData['description'] ?? '';
                     ArticleTableDevis::create($articleData);
                 }
             }

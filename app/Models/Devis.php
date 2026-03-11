@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Devis extends Model
 {
     protected $fillable = [
-        'numDevis', 'client_id', 'montant', 
+        'numDevis', 'client_id', 'montant', 'remiseDevis',
         'statut', 'date', 'factureExistante', 'blExistante'
     ];
     

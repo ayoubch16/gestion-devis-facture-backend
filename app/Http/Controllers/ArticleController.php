@@ -35,7 +35,7 @@ class ArticleController extends Controller
         $article = Article::find($id);
         
         if (!$article) {
-            return response()->json(['error' => 'Article non trouvé'], 404);
+            return response()->json(['success' => false, 'message' => 'Article non trouvé'], 404);
         }
 
         $validated = $request->validate([
@@ -56,7 +56,7 @@ class ArticleController extends Controller
         $article = Article::find($id);
         
         if (!$article) {
-            return response()->json(['error' => 'Article non trouvé'], 404);
+            return response()->json(['success' => false, 'message' => 'Article non trouvé'], 404);
         }
 
         $article->delete();

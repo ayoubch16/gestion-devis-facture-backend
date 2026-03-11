@@ -9,7 +9,7 @@ class Article extends Model
 {
     protected $fillable = [
         'unite', 'categoryId', 'nameArticle',
-        'descriptionArticle', 'priceArticle'
+        'descriptionArticle', 'priceArticle','remise'
     ];
     
 }
