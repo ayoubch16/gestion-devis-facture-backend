@@ -68,7 +68,11 @@ class DevisController extends Controller
         $devis = Devis::find($id);
         
         if (!$devis) {
-            return response()->json(['message' => 'Devis non trouvé'], 404);
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Devis non trouvé.',
+                'errorCode' => 'DEVIS_NOT_FOUND'
+            ], 404);
         }
 
         DB::beginTransaction();
@@ -100,7 +104,7 @@ class DevisController extends Controller
                 'date' => 'sometimes|date',
                 'articles' => 'sometimes|array',
                 'articles.*.designation' => 'required_with:articles|string',
-                'articles.*.description' => 'required_with:articles|string',
+                'articles.*.description' => 'nullable|string',
                 'articles.*.quantite' => 'required_with:articles|integer|min:1',
                 'articles.*.prixUnitaire' => 'required_with:articles|numeric|min:0',
                 'articles.*.prixTotal' => 'required_with:articles|numeric|min:0',
@@ -161,10 +165,27 @@ public function destroy($id)
         }
 
         // 2. Vérifier les dépendances
-        if ($devis->factureExistante || $devis->blExistante) {
+        if ($devis->factureExistante && $devis->blExistante) {
             return response()->json([
                 'success' => false,
-                'message' => 'Impossible de supprimer: des documents associés existent'
+                'message' => 'Impossible de supprimer ce devis : une facture et un bon de livraison y sont associés.',
+                'errorCode' => 'DEVIS_HAS_FACTURE_AND_BL'
+            ], 422);
+        }
+
+        if ($devis->factureExistante) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de supprimer ce devis : une facture y est associée. Supprimez d\'abord la facture.',
+                'errorCode' => 'DEVIS_HAS_FACTURE'
+            ], 422);
+        }
+
+        if ($devis->blExistante) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de supprimer ce devis : un bon de livraison y est associé. Supprimez d\'abord le BL.',
+                'errorCode' => 'DEVIS_HAS_BL'
             ], 422);
         }
 
@@ -204,11 +225,19 @@ public function destroy($id)
         $devis = Devis::find($id);
         
         if (!$devis) {
-            return response()->json(['message' => 'Devis non trouvé'], 404);
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Devis non trouvé.',
+                'errorCode' => 'DEVIS_NOT_FOUND'
+            ], 404);
         }
 
         if (!in_array($statut, ['EN_ATTENTE', 'ACCEPTE', 'REFUSE'])) {
-            return response()->json(['message' => 'Statut invalide'], 400);
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Statut invalide. Valeurs autorisées : EN_ATTENTE, ACCEPTE, REFUSE.',
+                'errorCode' => 'INVALID_STATUT'
+            ], 400);
         }
 
         $devis->update(['statut' => $statut]);

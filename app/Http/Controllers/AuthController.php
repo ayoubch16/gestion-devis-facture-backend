@@ -23,14 +23,18 @@ class AuthController extends Controller
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Identifiants incorrects'
+                'success' => false,
+                'message' => 'Nom d\'utilisateur ou mot de passe incorrect.',
+                'errorCode' => 'INVALID_CREDENTIALS'
             ], 401);
         }
 
         // Vérifiez que l'utilisateur est actif
         if (!$user->is_active) {
             return response()->json([
-                'message' => 'Votre compte est désactivé'
+                'success' => false,
+                'message' => 'Votre compte est désactivé. Contactez un administrateur.',
+                'errorCode' => 'ACCOUNT_DISABLED'
             ], 403);
         }
 

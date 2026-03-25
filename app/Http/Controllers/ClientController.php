@@ -57,18 +57,30 @@ class ClientController extends Controller
         $client = Client::findOrFail($id);
 
         // Vérifier si le client a des relations liées
-        if ($client->bls()->count() > 0 || 
-            $client->devis()->count() > 0 || 
-            $client->factures()->count() > 0) {
+        $hasDevis    = $client->devis()->count() > 0;
+        $hasFactures = $client->factures()->count() > 0;
+        $hasBls      = $client->bls()->count() > 0;
+
+        if ($hasDevis || $hasFactures || $hasBls) {
+            $documents = array_filter([
+                $hasDevis    ? 'devis'    : null,
+                $hasFactures ? 'factures' : null,
+                $hasBls      ? 'bons de livraison' : null,
+            ]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Impossible de supprimer ce client car il possède des bons de livraison, devis ou factures associés.'
+                'success'   => false,
+                'message'   => 'Impossible de supprimer ce client : il possède des ' . implode(', ', $documents) . ' associés.',
+                'errorCode' => 'CLIENT_HAS_DOCUMENTS'
             ], 422);
         }
 
         $client->delete();
 
-        return response()->json(['message' => 'Client supprimé avec succès'], 200);
+        return response()->json([
+            'success' => true,
+            'message' => 'Client supprimé avec succès.'
+        ]);
     }
 
 }

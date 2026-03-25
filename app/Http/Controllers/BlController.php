@@ -41,17 +41,19 @@ public function createFromDevis($devisId)
         if (!is_numeric($devisId)) {
             return response()->json([
                 'success' => false,
-                'message' => 'ID du devis invalide'
+                'message' => 'ID du devis invalide.',
+                'errorCode' => 'INVALID_DEVIS_ID'
             ], 400);
         }
 
         $devis = Devis::with(['client', 'articles'])->find($devisId);
-        
+
         if (!$devis) {
             Log::error("Devis $devisId non trouvé");
             return response()->json([
                 'success' => false,
-                'message' => 'Devis non trouvé'
+                'message' => 'Devis non trouvé.',
+                'errorCode' => 'DEVIS_NOT_FOUND'
             ], 404);
         }
 
@@ -59,7 +61,8 @@ public function createFromDevis($devisId)
             Log::warning("BL existe déjà pour devis $devisId");
             return response()->json([
                 'success' => false,
-                'message' => 'Un BL existe déjà pour ce devis'
+                'message' => 'Impossible de créer un BL : ce devis en possède déjà un.',
+                'errorCode' => 'DEVIS_ALREADY_HAS_BL'
             ], 409);
         }
 
@@ -116,13 +119,21 @@ public function createFromDevis($devisId)
     {
         // Validation explicite de l'ID
         if (!is_numeric($id)) {
-            return response()->json(['message' => 'ID du BL invalide'], 400);
+            return response()->json([
+                'success' => false,
+                'message' => 'ID du BL invalide.',
+                'errorCode' => 'INVALID_BL_ID'
+            ], 400);
         }
 
         $bl = Bl::with(['client', 'articles', 'devis'])->find($id);
-        
+
         if (!$bl) {
-            return response()->json(['message' => 'BL non trouvé'], 404);
+            return response()->json([
+                'success' => false,
+                'message' => 'Bon de livraison non trouvé.',
+                'errorCode' => 'BL_NOT_FOUND'
+            ], 404);
         }
 
         return response()->json($bl);
@@ -135,7 +146,11 @@ public function createFromDevis($devisId)
         $bls = BL::find($id);
         
         if (!$bls) {
-            return response()->json(['message' => 'Bl non trouvé'], 404);
+            return response()->json([
+                'success' => false,
+                'message' => 'Bon de livraison non trouvé.',
+                'errorCode' => 'BL_NOT_FOUND'
+            ], 404);
         }
 
         DB::beginTransaction();
@@ -200,20 +215,21 @@ public function createFromDevis($devisId)
 
 public function destroy($id)
 {
-    // Validation explicite de l'ID
     if (!is_numeric($id)) {
         return response()->json([
             'success' => false,
-            'message' => 'ID du BL invalide (doit être numérique)'
+            'message' => 'ID du BL invalide.',
+            'errorCode' => 'INVALID_BL_ID'
         ], 400);
     }
 
     $bl = Bl::find($id);
-    
+
     if (!$bl) {
         return response()->json([
             'success' => false,
-            'message' => 'BL non trouvé'
+            'message' => 'Bon de livraison non trouvé.',
+            'errorCode' => 'BL_NOT_FOUND'
         ], 404);
     }
 
@@ -259,16 +275,18 @@ public function updateStatut($blId, $statut)
     if (!in_array($statut, ['LIVRE', 'NON_LIVRE'])) {
         return response()->json([
             'success' => false,
-            'message' => 'Statut invalide. Valeurs autorisées: LIVRE, NON_LIVRE'
+            'message' => 'Statut invalide. Valeurs autorisées : LIVRE, NON_LIVRE.',
+            'errorCode' => 'INVALID_STATUT'
         ], 400);
     }
 
     $bl = Bl::find($blId);
-    
+
     if (!$bl) {
         return response()->json([
             'success' => false,
-            'message' => 'BL non trouvé'
+            'message' => 'Bon de livraison non trouvé.',
+            'errorCode' => 'BL_NOT_FOUND'
         ], 404);
     }
 

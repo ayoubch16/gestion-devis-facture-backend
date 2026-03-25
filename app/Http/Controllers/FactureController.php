@@ -33,12 +33,20 @@ class FactureController extends Controller
         $devis = Devis::with(['client', 'articles'])->find($devisId);
         
         if (!$devis) {
-            return response()->json(['message' => 'Devis non trouvé'], 404);
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Devis non trouvé.',
+                'errorCode' => 'DEVIS_NOT_FOUND'
+            ], 404);
         }
 
         // 2. Vérifier qu'une facture n'existe pas déjà
         if ($devis->factureExistante) {
-            return response()->json(['message' => 'Une facture existe déjà pour ce devis'], 400);
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de créer une facture : ce devis en possède déjà une.',
+                'errorCode' => 'DEVIS_ALREADY_HAS_FACTURE'
+            ], 400);
         }
         
         $facture = Facture::create([
@@ -73,7 +81,11 @@ class FactureController extends Controller
         $factures = Facture::find($id);
         
         if (!$factures) {
-            return response()->json(['message' => 'Facture non trouvé'], 404);
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Facture non trouvée.',
+                'errorCode' => 'FACTURE_NOT_FOUND'
+            ], 404);
         }
 
         DB::beginTransaction();
@@ -105,7 +117,7 @@ class FactureController extends Controller
                 'numBC' => 'sometimes|nullable|string',
                 'articles' => 'sometimes|array',
                 'articles.*.designation' => 'required_with:articles|string',
-                'articles.*.description' => 'required_with:articles|string',
+                'articles.*.description' => 'nullable|string',
                 'articles.*.quantite' => 'required_with:articles|integer|min:1',
                 'articles.*.prixUnitaire' => 'required_with:articles|numeric|min:0',
                 'articles.*.prixTotal' => 'required_with:articles|numeric|min:0',
@@ -150,23 +162,7 @@ class FactureController extends Controller
     }
 
 
-    // public function update(Request $request, Facture $facture)
-    // {
-    //     // if ($facture->statut === 'PAYEE' && $request->has('montant')) {
-    //     //     return response()->json(['message' => 'Une facture payée ne peut être modifiée'], 403);
-    //     // }
 
-    //     $validated = $request->validate([
-    //         'numFacture' => 'string|unique:factures,numFacture,'.$facture->id,
-    //         'client_id' => 'exists:clients,id',
-    //         'montant' => 'numeric',
-    //         'statut' => 'in:NON_PAYEE,PARTIELLEMENT_PAYEE,PAYEE',
-    //         'date' => 'date',
-    //     ]);
-
-    //     $facture->update($validated);
-    //     return $facture;
-    // }
 
 public function destroy($id)
 {
@@ -186,7 +182,8 @@ public function destroy($id)
         if ($facture->statut === 'PAYEE') {
             return response()->json([
                 'success' => false,
-                'message' => 'Impossible de supprimer une facture payée'
+                'message' => 'Impossible de supprimer cette facture : elle est marquée comme payée.',
+                'errorCode' => 'FACTURE_ALREADY_PAID'
             ], 422);
         }
 
@@ -233,11 +230,19 @@ public function destroy($id)
         $facture = Facture::find($id);
         
         if (!$facture) {
-            return response()->json(['message' => 'Facture non trouvé'], 404);
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Facture non trouvée.',
+                'errorCode' => 'FACTURE_NOT_FOUND'
+            ], 404);
         }
 
         if (!in_array($statut, ['NON_PAYEE', 'PAYEE', 'PARTIELLEMENT_PAYEE'])) {
-            return response()->json(['message' => 'Statut invalide'], 400);
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Statut invalide. Valeurs autorisées : NON_PAYEE, PARTIELLEMENT_PAYEE, PAYEE.',
+                'errorCode' => 'INVALID_STATUT'
+            ], 400);
         }
 
         $facture->update(['statut' => $statut]);
