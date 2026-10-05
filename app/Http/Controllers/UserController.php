@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -11,13 +12,13 @@ class UserController extends Controller
     // READ - Liste tous les utilisateurs
     public function index()
     {
-        return User::all();
+        return UserResource::collection(User::all());
     }
 
     // READ - Afficher un utilisateur spécifique
     public function show($id)
     {
-        return User::findOrFail($id);
+        return new UserResource(User::findOrFail($id));
     }
 
     // CREATE - Créer un utilisateur
@@ -29,42 +30,60 @@ class UserController extends Controller
             'password' => 'required|string|min:8',
             'first_name' => 'required|string',
             'last_name' => 'required|string',
-            'is_active' => 'boolean',
             'role' => 'required|in:ROLE_USER,ROLE_ADMIN,ROLE_SUPER_ADMIN,ROLE_CLIENT,ROLE_VENDEUR,ROLE_COMPTABLE,ROLE_COMMERCIAL',
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
-        return User::create($validated);
+        $validated['is_active'] = false;
+        $user = User::create($validated);
+
+        return new UserResource($user);
     }
 
-public function update(Request $request, $id)
-{
-    $user = User::findOrFail($id);
-    
-    $validated = $request->validate([
-        'username' => 'sometimes|string|unique:users,username,'.$user->id,
-        'email' => 'sometimes|email|unique:users,email,'.$user->id,
-        'password' => 'sometimes|string|min:8',
-        'first_name' => 'string',
-        'last_name' => 'string',
-        'is_active' => 'boolean',
-        'role' => 'in:ROLE_USER,ROLE_ADMIN,ROLE_SUPER_ADMIN,ROLE_CLIENT,ROLE_VENDEUR,ROLE_COMPTABLE,ROLE_COMMERCIAL',
-    ]);
+    public function update(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
 
-    if ($request->has('password')) {
-        $validated['password'] = Hash::make($request->password);
+        $validated = $request->validate([
+            'username' => 'sometimes|string|unique:users,username,'.$user->id,
+            'email' => 'sometimes|email|unique:users,email,'.$user->id,
+            'password' => 'sometimes|string|min:8',
+            'first_name' => 'string',
+            'last_name' => 'string',
+            'is_active' => 'boolean',
+            'role' => 'in:ROLE_USER,ROLE_ADMIN,ROLE_SUPER_ADMIN,ROLE_CLIENT,ROLE_VENDEUR,ROLE_COMPTABLE,ROLE_COMMERCIAL',
+        ]);
+
+        if ($request->has('password')) {
+            $validated['password'] = Hash::make($request->password);
+        }
+
+        $user->update($validated);
+        return new UserResource($user);
     }
 
-    $user->update($validated);
-    return $user;
-}
+    // PATCH - Activer / désactiver un utilisateur
+    public function updateStatut(Request $request, $id, $statut)
+    {
+        if (!in_array($statut, ['activate', 'deactivate'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Statut invalide. Valeurs acceptées : activate, deactivate.',
+            ], 422);
+        }
+
+        $user = User::findOrFail($id);
+        $user->is_active = $statut === 'activate';
+        $user->save();
+
+        return new UserResource($user);
+    }
 
     // DELETE - Supprimer un utilisateur
     public function destroy($id)
     {
         $user = User::findOrFail($id);
         $user->delete();
-        return response()->json(['message' => 'Utilisateur supprimé avec succès']);
+        return response()->json(['success' => true, 'message' => 'Utilisateur supprimé avec succès']);
     }
 }
-

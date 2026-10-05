@@ -45,6 +45,7 @@ class TraceOperation extends Model
         'CLIENT' => 'CLIENT',
         'ARTICLE' => 'ARTICLE',
         'FACTURE' => 'FACTURE',
-        'BON_LIVRAISON' => 'BON_LIVRAISON'
+        'BON_LIVRAISON' => 'BON_LIVRAISON',
+        'USER' => 'USER'
     ];
 }

@@ -35,15 +35,10 @@ class ArticleController extends Controller
         return Article::create($validated);
     }
 
-    public function show(Article $article)
-    {
-        return $article->load('categoryId');
-    }
-
     public function update(Request $request, $id)
     {
         $article = Article::find($id);
-        
+
         if (!$article) {
             return response()->json(['success' => false, 'message' => 'Article non trouvé'], 404);
         }

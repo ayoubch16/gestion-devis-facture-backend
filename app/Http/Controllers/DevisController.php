@@ -12,11 +12,11 @@ use Illuminate\Support\Facades\Log;
 class DevisController extends Controller
 {
     public function index()
-        {
-            return Devis::with(['client', 'articles'])
-                        ->orderBy('id', 'desc')
-                        ->get();
-        }
+    {
+        return Devis::with(['client', 'articles'])
+                    ->orderBy('id', 'desc')
+                    ->get();
+    }
 
     public function latest()
     {
@@ -27,7 +27,7 @@ class DevisController extends Controller
     }
 
     public function store(Request $request)
-     {
+    {
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
             'montant' => 'required|numeric',
@@ -56,17 +56,10 @@ class DevisController extends Controller
         return $devis->load(['client', 'articles']);
     }
 
-    public function show(Devis $devis)
-    {
-        return $devis->load(['client', 'articles']);
-    }
-
-
-
     public function update(Request $request, $id)
     {
         $devis = Devis::find($id);
-        
+
         if (!$devis) {
             return response()->json([
                 'success'   => false,
@@ -76,11 +69,11 @@ class DevisController extends Controller
         }
 
         DB::beginTransaction();
-        
+
         try {
             // Préparation des données pour la validation
             $requestData = $request->all();
-            
+
             // Gérer le cas où montant est "NaN" ou invalide
             if (isset($requestData['montant']) && ($requestData['montant'] === 'NaN' || !is_numeric($requestData['montant']))) {
                 // Calculer le montant total à partir des articles si disponibles
@@ -122,7 +115,7 @@ class DevisController extends Controller
                 // Créer les nouveaux articles
                 foreach ($validated['articles'] as $articleData) {
                     $articleData['devis_id'] = $devis->id;
-                    
+
                     // S'assurer que les valeurs numériques sont correctement formatées
                     $articleData['quantite'] = intval($articleData['quantite']);
                     $articleData['prixUnitaire'] = floatval($articleData['prixUnitaire']);
@@ -134,13 +127,13 @@ class DevisController extends Controller
             }
 
             DB::commit();
-            
+
             return $devis->load(['client', 'articles']);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Erreur mise à jour devis: " . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la mise à jour',
@@ -149,81 +142,72 @@ class DevisController extends Controller
         }
     }
 
-
-public function destroy($id)
-{
-    DB::beginTransaction();
-    try {
-        // 1. Vérifier l'existence du devis
-        $devis = Devis::with(['articles'])->find($id);
-        
-        if (!$devis) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Devis non trouvé'
-            ], 404);
-        }
-
-        // 2. Vérifier les dépendances
-        if ($devis->factureExistante && $devis->blExistante) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de supprimer ce devis : une facture et un bon de livraison y sont associés.',
-                'errorCode' => 'DEVIS_HAS_FACTURE_AND_BL'
-            ], 422);
-        }
-
-        if ($devis->factureExistante) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de supprimer ce devis : une facture y est associée. Supprimez d\'abord la facture.',
-                'errorCode' => 'DEVIS_HAS_FACTURE'
-            ], 422);
-        }
-
-        if ($devis->blExistante) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de supprimer ce devis : un bon de livraison y est associé. Supprimez d\'abord le BL.',
-                'errorCode' => 'DEVIS_HAS_BL'
-            ], 422);
-        }
-
-        // 3. Suppression en cascade
-        ArticleTableDevis::where('devis_id', $id)->delete();
-        $devis->delete();
-
-        DB::commit();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Devis et articles associés supprimés avec succès'
-        ]);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error("Erreur suppression devis: " . $e->getMessage());
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Erreur lors de la suppression',
-            'error' => $e->getMessage()
-        ], 500);
-    }
-}
-
-
-    public function getByClient($clientId)
+    public function destroy($id)
     {
-        return Devis::with(['client', 'articles'])
-            ->where('client_id', $clientId)
-            ->get();
+        DB::beginTransaction();
+        try {
+            // 1. Vérifier l'existence du devis
+            $devis = Devis::with(['articles'])->find($id);
+
+            if (!$devis) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Devis non trouvé'
+                ], 404);
+            }
+
+            // 2. Vérifier les dépendances
+            if ($devis->factureExistante && $devis->blExistante) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Impossible de supprimer ce devis : une facture et un bon de livraison y sont associés.',
+                    'errorCode' => 'DEVIS_HAS_FACTURE_AND_BL'
+                ], 422);
+            }
+
+            if ($devis->factureExistante) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Impossible de supprimer ce devis : une facture y est associée. Supprimez d\'abord la facture.',
+                    'errorCode' => 'DEVIS_HAS_FACTURE'
+                ], 422);
+            }
+
+            if ($devis->blExistante) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Impossible de supprimer ce devis : un bon de livraison y est associé. Supprimez d\'abord le BL.',
+                    'errorCode' => 'DEVIS_HAS_BL'
+                ], 422);
+            }
+
+            // 3. Suppression en cascade
+            ArticleTableDevis::where('devis_id', $id)->delete();
+            $devis->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Devis et articles associés supprimés avec succès'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Erreur suppression devis: " . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la suppression',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function updateStatut(Request $request, $id, $statut)
     {
         $devis = Devis::find($id);
-        
+
         if (!$devis) {
             return response()->json([
                 'success'   => false,
@@ -241,12 +225,7 @@ public function destroy($id)
         }
 
         $devis->update(['statut' => $statut]);
-        
-        return $devis;
-    }
 
-    public function getArticles(Devis $devis)
-    {
-        return $devis->articles;
+        return $devis;
     }
 }

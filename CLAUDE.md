@@ -30,15 +30,17 @@ gestion-devis-facture-backend-v1/
 │   │   │   ├── DevisController.php         # CRUD devis + changement statut
 │   │   │   ├── FactureController.php       # CRUD factures + changement statut
 │   │   │   ├── PdfExportController.php     # Export PDF (DomPDF)
-│   │   │   ├── SharedController.php        # Compteurs dashboard + envoi email
+│   │   │   ├── SharedController.php        # Compteurs dashboard + envoi email (PDF en pièce jointe)
 │   │   │   ├── TraceabilityController.php  # Audit log des opérations
 │   │   │   └── UserController.php          # CRUD utilisateurs
 │   │   ├── Kernel.php
-│   │   └── Middleware/
-│   │       └── VerifyCsrfToken.php
+│   │   ├── Middleware/
+│   │   │   ├── CheckRole.php               # Middleware 'role' (enregistré, pas encore appliqué aux routes)
+│   │   │   └── VerifyCsrfToken.php
+│   │   └── Resources/
+│   │       └── UserResource.php            # Format JSON d'un utilisateur (isActive en camelCase)
 │   ├── Mail/
-│   │   ├── GenericEmailWithAttachment.php  # Email générique avec pièce jointe
-│   │   └── SendDevisEmail.php              # Email spécifique devis
+│   │   └── GenericEmailWithAttachment.php  # Email générique avec PDF en pièce jointe
 │   ├── Models/
 │   │   ├── Article.php                     # Catalogue articles
 │   │   ├── ArticleTableBl.php              # Lignes articles d'un BL
@@ -49,8 +51,7 @@ gestion-devis-facture-backend-v1/
 │   │   ├── Devis.php                       # Devis
 │   │   ├── Facture.php                     # Facture
 │   │   ├── TraceOperation.php              # Entrée d'audit log
-│   │   ├── User.php                        # Utilisateur
-│   │   └── Ville.php                       # Ville (référentiel)
+│   │   └── User.php                        # Utilisateur
 │   └── Providers/
 │       ├── AppServiceProvider.php
 │       ├── AuthServiceProvider.php
@@ -124,8 +125,8 @@ BL         ──< ArticleTableBl
 ### Numérotation automatique des documents
 Le service `DocumentNumberServiceProvider` (singleton `app('documentNumber')`) génère :
 - Devis : `DEV-YY-XXXXX` (ex: `DEV-26-00001`)
-- Facture : `FAC-YY-XXXXX`
-- BL : `BL-YY-XXXXX`
+
+Les numéros de facture et de BL sont dérivés du numéro du devis d'origine (`DEV` remplacé par `FACT` / `BL`).
 
 ### Transactions DB
 Les opérations qui modifient plusieurs tables (create/update/delete avec cascade) utilisent systématiquement `DB::beginTransaction()` / `DB::commit()` / `DB::rollBack()`.
@@ -144,27 +145,37 @@ Les opérations qui modifient plusieurs tables (create/update/delete avec cascad
 ## 5. Routes API
 
 Toutes les routes sont sous le préfixe `/api/` (défini dans `RouteServiceProvider`).
-**Aucune authentification middleware n'est appliquée globalement** (sauf `/logout`).
+**Aucune authentification middleware n'est appliquée globalement** (sauf `/users/logout` et l'envoi d'email, protégés par `auth:sanctum`).
+
+Ce tableau correspond exactement aux endpoints déclarés côté Angular dans `src/app/const/endpoints.ts` : toute route ajoutée ou retirée doit l'être des deux côtés.
 
 | Méthode | URL | Action |
 |---|---|---|
 | POST | `/users/login` | Authentification |
 | POST | `/users/logout` | Déconnexion (auth:sanctum requis) |
-| GET/POST/PUT/DELETE | `/articles/{id?}` | CRUD articles |
-| GET/POST/PUT/DELETE | `/clients/{id?}` | CRUD clients |
-| GET/POST/PUT/DELETE | `/devis/{id?}` | CRUD devis |
+| GET/POST | `/users` | Liste / création utilisateur |
+| GET/PUT/DELETE | `/users/{id}` | Lecture / modification / suppression utilisateur |
+| PATCH (ou PUT) | `/users/{id}/{activate\|deactivate}` | Activation / désactivation |
+| GET/POST | `/articles` | Liste / création article |
+| PUT/DELETE | `/articles/{id}` | Modification / suppression article |
+| GET/POST | `/clients` | Liste / création client |
+| PUT/DELETE | `/clients/{id}` | Modification / suppression client |
+| GET/POST | `/devis` | Liste / création devis |
+| PUT/DELETE | `/devis/{id}` | Modification / suppression devis |
 | PUT | `/devis/{id}/{statut}` | Changement statut devis |
 | POST | `/factures/{id}` | Créer facture depuis devis |
-| GET/PUT/DELETE | `/factures/{id?}` | Gestion factures |
+| GET | `/factures` | Liste factures |
+| PUT/DELETE | `/factures/{id}` | Modification / suppression facture |
 | PUT | `/factures/{id}/{statut}` | Changement statut facture |
 | POST | `/bls/{id}` | Créer BL depuis devis |
-| GET/PUT/DELETE | `/bls/{id?}` | Gestion BL |
-| GET | `/shared/cpt*` | Compteurs dashboard (4 endpoints) |
-| POST | `/shared/devis/send-email` | Envoi email devis |
-| POST | `/shared/emails/send-with-attachment` | Envoi email générique |
+| GET | `/bls` | Liste BL |
+| PUT/DELETE | `/bls/{id}` | Modification / suppression BL |
+| PUT | `/bls/{id}/{statut}` | Changement statut BL |
+| GET | `/last-devis`, `/last-factures`, `/last-bls` | 5 derniers documents (dashboard) |
+| GET | `/shared/cptfacture`, `/shared/cptdevis`, `/shared/cptbl` | Compteurs dashboard |
+| POST | `/shared/emails/send-with-attachment` | Envoi email avec PDF en base64 (auth:sanctum requis) |
 | POST | `/download-pdf` | Export PDF (devis/facture/bl) |
 | POST/GET | `/traceability` | Audit log |
-| GET | `/traceability/{id}` | Opérations par entité |
 
 ### Statuts métier
 
@@ -172,7 +183,7 @@ Toutes les routes sont sous le préfixe `/api/` (défini dans `RouteServiceProvi
 |---|---|
 | Devis | `EN_ATTENTE`, `ACCEPTE`, `REFUSE` |
 | Facture | `NON_PAYEE`, `PARTIELLEMENT_PAYEE`, `PAYEE` |
-| BL | (à vérifier dans BlController) |
+| BL | `NON_LIVRE`, `LIVRE` |
 
 ---
 
@@ -212,7 +223,7 @@ Les lignes d'articles dans les documents (devis, factures, BL) sont stockées da
 - Un devis avec facture ou BL existant ne peut pas être supprimé
 
 ### 3. Authentification sans protection globale des routes
-Actuellement, seule la route `logout` est protégée par `auth:sanctum`. Toutes les autres routes sont publiques. C'est un choix délibéré (probablement pour simplifier le développement), mais représente un risque de sécurité en production.
+Actuellement, seules les routes `logout` et `shared/emails/send-with-attachment` sont protégées par `auth:sanctum`. Toutes les autres routes sont publiques. C'est un choix délibéré (probablement pour simplifier le développement), mais représente un risque de sécurité en production.
 
 ### 4. Correspondance camelCase ↔ snake_case
 Le frontend Angular envoie et attend du `camelCase`. La base de données utilise `snake_case`. La conversion est faite manuellement dans `TraceabilityController` (mapping explicite champ par champ).

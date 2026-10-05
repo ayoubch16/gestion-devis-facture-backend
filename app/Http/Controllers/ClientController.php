@@ -4,14 +4,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
-use App\Models\Ville;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class ClientController extends Controller
 {
-
-
     public function index()
     {
         return response()->json(Client::orderBy('id', 'desc')->get());
@@ -30,15 +26,10 @@ class ClientController extends Controller
         return Client::create($validated);
     }
 
-    public function show(Client $client)
+    public function update(Request $request, $id)
     {
-        return $client->load('ville');
-    }
+        $client = Client::findOrFail($id);
 
-    public function update(Request $request, $id) // Changez le paramètre
-    {
-        $client = Client::findOrFail($id); // Récupérez explicitement le client
-        
         $validated = $request->validate([
             'raisonSociale' => 'string',
             'adresse' => 'string',
@@ -82,5 +73,4 @@ class ClientController extends Controller
             'message' => 'Client supprimé avec succès.'
         ]);
     }
-
 }
