@@ -22,6 +22,16 @@ class ArticleController extends Controller
             'priceArticle' => 'required|numeric',
         ]);
 
+        if (isset($validated['nameArticle'])) {
+            $validated['nameArticle'] = $this->sanitizeText($validated['nameArticle']);
+        }
+        if (isset($validated['descriptionArticle'])) {
+            $validated['descriptionArticle'] = $this->sanitizeText($validated['descriptionArticle']);
+        }
+        if (isset($validated['unite'])) {
+            $validated['unite'] = $this->sanitizeText($validated['unite']);
+        }
+
         return Article::create($validated);
     }
 
@@ -46,9 +56,33 @@ class ArticleController extends Controller
             'priceArticle' => 'sometimes|required|numeric',  // Ajouté 'required' avec 'sometimes'
         ]);
 
+        if (isset($validated['nameArticle'])) {
+            $validated['nameArticle'] = $this->sanitizeText($validated['nameArticle']);
+        }
+        if (isset($validated['descriptionArticle'])) {
+            $validated['descriptionArticle'] = $this->sanitizeText($validated['descriptionArticle']);
+        }
+        if (isset($validated['unite'])) {
+            $validated['unite'] = $this->sanitizeText($validated['unite']);
+        }
+
         $article->update($validated);
-        
+
         return $article;
+    }
+
+    private function sanitizeText(string $value): string
+    {
+        // Supprimer les balises HTML/JS
+        $value = strip_tags($value);
+        // Décoder les entités HTML existantes (ex: &amp; → &)
+        $value = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // Supprimer les caractères de contrôle invisibles sauf tab/newline normaux
+        $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $value);
+        // Normaliser les espaces multiples en un seul espace
+        $value = preg_replace('/\s+/', ' ', $value);
+        // Supprimer les espaces en début et fin
+        return trim($value);
     }
 
     public function destroy($id)
