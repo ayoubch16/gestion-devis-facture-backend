@@ -16,7 +16,6 @@ class TraceabilityController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'timestamp' => 'required|date',
             'operationType' => 'required|in:' . implode(',', TraceOperation::OPERATION_TYPES),
             'entityType' => 'required|in:' . implode(',', TraceOperation::ENTITY_TYPES),
             'entityId' => 'required|integer|min:1',
@@ -37,7 +36,7 @@ class TraceabilityController extends Controller
         try {
             // Convertir les noms de champ camelCase vers snake_case pour la base
             $operation = TraceOperation::create([
-                'timestamp' => $request->timestamp,
+                'timestamp' => now(),
                 'operation_type' => $request->operationType,
                 'entity_type' => $request->entityType,
                 'entity_id' => $request->entityId,
